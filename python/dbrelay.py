@@ -12,10 +12,7 @@ except ImportError:
 
 __doc__ = """
 The drelay module provides wrapper classes to access MS SQL Servers via DB
-Relay instances. Instances of the DBRelayRoundRobin class try a random
-server from the supplied list. If a query to the tried server fails, the
-next server in the randomized list attempted. If the list is exausted, then
-the call raises an exception.
+Relay instances.
 """
 
 class DBRelay(object):
@@ -32,19 +29,19 @@ class DBRelay(object):
     def __init__(self, tag, server, params, debug = False):
         """
         DBRelay constructor takes the following parameters:
-        
+
         tag    - A string, which will be used to identify the instance in
                  log files and exceptions.
-        
+
         server - Target DB Relay server url, e.g. "http://local:1433/sql"
                  May be provided as a function returning a server url
                  on each call.
-        
+
         params - DB Relay connection configuration dictionary. See DB
                  Relay documentation for specifics. The only variation is
                  that 'connection_name' and 'query_tag' may be provided
                  as functions returning desired values on each call.
-        
+
         debug  - A boolean flag. If True, sets the logger level to DEBUG.
                  Optional, defaults to False.
         """
@@ -63,7 +60,7 @@ class DBRelay(object):
 
         conn = copy.copy( self.params )
         conn['sql'] = query
-        
+
         if callable( self.server ):
             server = self.server()
         else:

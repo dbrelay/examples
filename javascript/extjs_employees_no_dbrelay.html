@@ -1,14 +1,14 @@
 <html>
     <head>
         <title>AdventureWorks Employees</title>
-        
+
         <link rel="stylesheet" type="text/css" charset="utf-8"
             href="http://dbrelay.net:1433/dbrelay/js/ext-3.0.0/resources/css/ext-all-notheme.css"
         ></link>
         <link rel="stylesheet" type="text/css" charset="utf-8"
             href="http://dbrelay.net:1433/dbrelay/js/ext-3.0.0/resources/css/xtheme-blue.css"
         ></link>
-        
+
         <script  type="text/javascript" charset="utf-8"
             src="http://dbrelay.net:1433/dbrelay/js/jquery/jquery-1.3.2.min.js"
         ></script>
@@ -18,10 +18,10 @@
         <script  type="text/javascript" charset="utf-8"
             src="http://dbrelay.net:1433/dbrelay/js/ext-3.0.0/ext-all.js"
         ></script>
-        
+
         <script>
             DaboApp = function(){
-            
+
                 var employee_store = new Ext.data.ArrayStore({
                     fields: [
                         { name : 'Name' },
@@ -38,7 +38,7 @@
                     ],
                     sortInfo: { field: 'Name', direction: "ASC" }
                 });
-                
+
                 var employee_columns = new Ext.grid.ColumnModel({
                     columns: [
                         { header: "Person",         dataIndex: "Name"              },
@@ -47,9 +47,9 @@
                         { header: "Postal Code",    dataIndex: "PostalCode"        }
                     ]
                 });
-                
+
                 var App = Ext.extend( Ext.util.Observable, {
-                
+
                     initApp: function(){
                         this.mainPanel = new Ext.Viewport({
                             layout:"fit",
@@ -88,9 +88,9 @@
                 });
                 return new App();
             }();
-            
+
             Ext.onReady( DaboApp.initApp, DaboApp);
-        
+
         </script>
     </head>
     <body></body>
