@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+	<title>bare_employees</title>
+    <script  type="text/javascript" charset="utf-8"
+        src="http://dbrelay.net:1433/dbrelay/js/jquery/jquery-1.3.2.min.js"
+    ></script>
+    <script type="text/javascript" charset="utf-8">
+
+        function dbrelayQuery( connection, sql, callback, query_tag) {
+            //copy connection info into params
+    	    var params = jQuery.extend({ sql: sql, query_tag: query_tag || null }, connection);
+
+        	if(connection.dbrelay_host){           
+        		jQuery.getJSON( connection.dbrelay_host + '/sql?js_callback=?', params , callback);   
+        	} 
+        	else{
+        		jQuery.post( '/sql', params, callback, "json" );    
+        	}  
+        };
+
+        // connectivity setup
+        var connection = {
+            sql_server      : 'sqlserver',
+            sql_database    : 'AdventureWorks',
+            sql_user        : 'demo',
+            sql_password    : 'demo',
+            connection_name : 'javascript test',
+
+        	//optional parameter for XSS (no trailing slash)
+        	dbrelay_host: 'http://dbrelay.com:1433'
+        };
+
+        // callback function
+        function renderResponse( response ) {
+            jQuery( 'body' ).append(
+                '<p style="margin-top: 2em;">The &quot;' +
+                response.request.query_tag +
+                '&quot; query results:</p><hr /><table id="' +
+                response.request.query_tag +
+                '"></table>'
+            );
+            var html_rows = '';
+            jQuery.each( response.data[0].rows, function(idx, row){
+                var html_row = '';
+                for ( cell in row ) { html_row += '<td>' + ( row[cell] ? row[cell] : '&nbsp;' ) + '</td>';};
+                html_rows += '<tr>' + html_row + '</tr>'
+            });
+            jQuery( '#' + response.request.query_tag ).append( html_rows );
+        };
+
+        //example calls:
+        dbrelayQuery(connection, "select @@version as ver", renderResponse, "VERSION");
+        dbrelayQuery(connection, "select Title, FirstName, MiddleName, LastName from HumanResources.vEmployee", renderResponse, "EMPLOYEES");
+
+    </script>
+</head>
+<body></body>
+</html>
