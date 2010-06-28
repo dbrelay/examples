@@ -1,0 +1,122 @@
+<html>
+    <head>
+        <title>AdventureWorks Employees</title>
+        
+        <link rel="stylesheet" type="text/css" charset="utf-8"
+            href="http://dbrelay.net:1433/dbrelay/js/ext-3.0.0/resources/css/ext-all-notheme.css"
+        ></link>
+        <link rel="stylesheet" type="text/css" charset="utf-8"
+            href="http://dbrelay.net:1433/dbrelay/js/ext-3.0.0/resources/css/xtheme-blue.css"
+        ></link>
+        
+        <script  type="text/javascript" charset="utf-8"
+            src="http://dbrelay.net:1433/dbrelay/js/jquery/jquery-1.3.2.min.js"
+        ></script>
+        <script  type="text/javascript" charset="utf-8"
+            src="http://dbrelay.net:1433/dbrelay/js/ext-3.0.0/adapter/jquery/ext-jquery-adapter.js"
+        ></script>
+        <script  type="text/javascript" charset="utf-8"
+            src="http://dbrelay.net:1433/dbrelay/js/ext-3.0.0/ext-all.js"
+        ></script>
+        
+        <script>
+            DaboApp = function(){
+                
+                var dbrelay_net = new Ext.data.ScriptTagProxy({
+                    url:           'http://dbrelay.net:1433/sql',
+                    callbackParam: 'js_callback'
+                });
+                
+                var url_params = {
+                    'sql_server'      : 'sqlserver',
+                    'sql_database'    : 'AdventureWorks',
+                    'sql_user'        : 'demo',
+                    'sql_password'    : 'demo',
+                    'connection_name' : 'javascript test'
+                };
+            
+                var employee_store = new Ext.data.JsonStore({
+                    fields: [
+                        { name : 'Name' },
+                        { name : 'City' },
+                        { name : 'StateProvinceName' },
+        	            { name : 'PostalCode' },
+        	            { name : 'CountryRegionName' }
+                    ],
+                    proxy      : dbrelay_net,
+                    baseParams : url_params,
+                    root       : 'data[0].rows',
+                    autoLoad   : false,
+                    listeners  : {
+                        beforeload: function( store ) {
+                            store.baseParams.sql = "select FirstName + ' ' + coalesce( MiddleName + ' ', '' ) + LastName + coalesce( ' ' + Suffix, '' ) as Name, City, StateProvinceName, PostalCode from HumanResources.vEmployee where CountryRegionName = '" +
+                            $('#region_combo').val() + "'";
+                            return true;
+                        }
+                    },
+                    sortInfo: { field: 'Name', direction: "ASC" }
+                });
+                
+                var employee_columns = new Ext.grid.ColumnModel({
+                    columns: [
+                        { header: "Person",         dataIndex: "Name"              },
+                        { header: "City",           dataIndex: "City"              },
+                        { header: "State/Province", dataIndex: "StateProvinceName" },
+                        { header: "Postal Code",    dataIndex: "PostalCode"        }
+                    ]
+                });
+                
+                var App = Ext.extend( Ext.util.Observable, {
+                
+                    initApp: function(){
+                        this.mainPanel = new Ext.Viewport({
+                            layout:"fit",
+                            items: {
+                                xtype:        "grid",
+                                store:        employee_store,
+                                colModel:     employee_columns,
+                                tbar: [
+                                    'Region filter:',
+                                    {
+                                        id:            'region_combo',
+                                        xtype:         'combo',
+                                        allowBlank:    false,
+                                        displayField:  'region',
+                                        editable:      true,
+                                        lazyRender:    true,
+                                        mode:          'local',
+                                        triggerAction: 'all',
+                                        valueField:    'region',
+                                        store: new Ext.data.JsonStore({
+                                            fields: [ 'region' ],
+                                            proxy      : dbrelay_net,
+                                            baseParams : url_params,
+                                            root       : 'data[0].rows',
+                                            autoLoad   : true,
+                                            listeners: {
+                                                beforeload: function( store ) {
+                                                    store.baseParams.sql = "select distinct CountryRegionName as region from HumanResources.vEmployee";
+                                                    return true;
+                                                }
+                                            }
+                                        }),
+                                        listeners: {
+                                            'select' : function(){
+                                                employee_store.reload();
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        });
+                    }
+                });
+                return new App();
+            }();
+            
+            Ext.onReady( DaboApp.initApp, DaboApp);
+        
+        </script>
+    </head>
+    <body></body>
+</html>
