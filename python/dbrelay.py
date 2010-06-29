@@ -83,7 +83,7 @@ class DBRelay(object):
         try:
             response = urllib2.urlopen( url=server, data=urllib.urlencode(conn) )
         except Exception, msg:
-            raise( RuntimeError( "Failed to use the DB Relay server %s at %s. The error message was:\n%s" % (self.tag, self.server, msg)) )
+            raise( RuntimeError( "Failed to use the DB Relay server %s at %s. The error message was:\n%s" % (self.tag, server, msg)) )
 
         if not response:
             raise( RuntimeError("No response from server %s to the following (%s) request:\n%s" % (server, self.tag, pprint.pformat(conn))) )

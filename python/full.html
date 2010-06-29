@@ -1,0 +1,142 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<title>DB Relay use example</title>
+</head>
+<body>
+    <p>This example shows an admittedly simplified way of wrapping data with domain-specific information, so that it can be easily used by a business logic code. Since the example database is read-only, this module is limited to select statements. In reality any valid SQL would do, including inserts, creates, deletes, etc.</p>
+
+    <p>An important part of this example is to demonstrate simple ways to round-robin between different DB Relay instances for load balancing and reliability. The module also demonstrates spreading the load between multiple connections which is helpful sometimes for faster query turn-around.</p>
+
+    <p>First, the required import block:</p>
+
+    <pre><code>from dbrelay import DBRelay     # Main class to be subclassed
+
+from itertools import cycle     # A cycle function to round-robin through DB Relay instances
+from os        import getpid    # Current process ID to construct a connection name
+from socket    import getfqdn   # Full system name to construct a connection name
+from random    import randrange # Random numbers generator to construct a connection name</code></pre>
+
+    <p>Then we declare an inherited class (and set some utility variables):</p>
+
+    <pre><code>class AW_Department( DBRelay ):
+    name = &#x27;&#x27;</code></pre>
+
+   <p> The dbrelays variable holds the <strong>function</strong> to get the next DB Relay out of the list of URLs. That allows user scripts to retry the request if failed on a specific DB Relay URL and generally load-balances the workload between different DB Relay instances, if needed. Users may provide any function returning DB Relay URL suiting their needs.</p>
+
+    <pre><code>    dbrelays = cycle([
+        &#x27;http://dbrelay.net:1433/sql&#x27;,
+        &#x27;http://dbrelay.org:1433/sql&#x27;
+    ]).next</code></pre>
+
+    <p>The connector prefix will help to identify the connector owner if DBAs will need to track it down:</p>
+
+    <pre><code>    connection_name_prefix = getfqdn() + &#x27;:&#x27; + repr(getpid())</code></pre>
+
+    <p>The connection_name is another <strong>function</strong>, which will produce one of five random connector names. Each connector may hold about a hundred pending requests in its queue (depending on the host OS). If you running into the situation when the queue high watermark is above 90, then split the load between different connectors. One gotcha is that SQL connection context is specific to a connector - so  a temporary table or cursor created on one connector will not be accessible via another connector.</p>
+
+    <pre><code>    def connection_name(self):
+        return self.connection_name_prefix + &#x27;,&#x27; + str(randrange(0,5))</code></pre>
+
+    <p>Now, in the constructor we put the member value to store the department name, and use two functions (dbrelays and connection_name) created above. Connection name and DB Relay URL can be provided as either a string or a function. These functions will get called without parameters to get the connection name or DB Relay URL strings when needed.</p>
+
+    <p>The &quot;tag&quot; parameter used in error messages and logs, and not sent to the server. The connection dictionary is the request configuration, which will be sent to the DB Relay server at each request. The dictionary entries are documented at <a href="http://dbrelay.net:1433/dbrelay/docs/interfaces.html">the DB Relay on-line help</a>. Finally, the debug parameter, if set to True, causes each request data structure to be printed before submitting the request.</p>
+
+    <pre><code>    def __init__( self, department, debug = False ):
+        self.name = department
+        conn = {
+         &#x27;sql_server&#x27;      : &#x27;sqlserver&#x27;,
+         &#x27;sql_database&#x27;    : &#x27;AdventureWorks&#x27;,
+         &#x27;sql_user&#x27;        : &#x27;demo&#x27;,
+         &#x27;sql_password&#x27;    : &#x27;demo&#x27;,
+         &#x27;connection_name&#x27; : self.connection_name
+        }
+        DBRelay.__init__( self, &quot;SystemConfig&quot;, self.dbrelays, conn, debug )</code></pre>
+
+    <p>The rest of the methods show example of abstracting SQL access using DB Relay. Here is the complete example code for your review:</p>
+
+    <pre><code>from dbrelay import DBRelay     # Main class to be subclassed
+
+from itertools import cycle     # A cycle function to round-robin through DB Relay instances
+from os        import getpid    # Current process ID to construct a connection name
+from socket    import getfqdn   # Full system name to construct a connection name
+from random    import randrange # Random numbers generator to construct a connection name
+
+class AW_Department( DBRelay ):
+    name = &#x27;&#x27;
+
+    dbrelays = cycle([
+        &#x27;http://dbrelay.net:1433/sql&#x27;,
+        &#x27;http://dbrelay.org:1433/sql&#x27;
+    ]).next
+
+    connection_name_prefix = getfqdn() + &#x27;:&#x27; + repr(getpid())
+
+    def connection_name(self):
+        return self.connection_name_prefix + &#x27;,&#x27; + str(randrange(0,5))
+
+    def __init__( self, department, debug = False ):
+        self.name = department
+        conn = {
+         &#x27;sql_server&#x27;      : &#x27;sqlserver&#x27;,
+         &#x27;sql_database&#x27;    : &#x27;AdventureWorks&#x27;,
+         &#x27;sql_user&#x27;        : &#x27;demo&#x27;,
+         &#x27;sql_password&#x27;    : &#x27;demo&#x27;,
+         &#x27;connection_name&#x27; : self.connection_name
+        }
+        DBRelay.__init__( self, &quot;SystemConfig&quot;, self.dbrelays, conn, debug )
+
+    def employee_list(self):
+        return self.select(&quot;&quot;&quot;
+            select BusinessEntityID
+            from HumanResources.vEmployeeDepartmentHistory
+            where EndDate is null
+              and Department = &#x27;%s&#x27;
+        &quot;&quot;&quot; % (self.name)
+        )
+
+    def employee_count(self):
+        return self.select(&quot;&quot;&quot;
+            select count(BusinessEntityID) as num_employees
+            from HumanResources.vEmployeeDepartmentHistory
+            where EndDate is null
+              and Department = &#x27;%s&#x27;
+        &quot;&quot;&quot; % (self.name)
+        )[0][&#x27;num_employees&#x27;]
+
+    def shift_coverage(self):
+        return self.sql(&quot;&quot;&quot;
+            select Shift, count(BusinessEntityID) as Employees
+            from HumanResources.vEmployeeDepartmentHistory
+            where EndDate is null
+              and Department = &#x27;%s&#x27;
+            group by Shift
+            order by Shift
+        &quot;&quot;&quot; % (self.name)
+        )[&#x27;data&#x27;][0][&#x27;rows&#x27;]</code></pre>
+
+    <p>Given this module, here is an example python session:</p>
+    <pre>$ python
+Python 2.6.1. Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; from full import AW_Department
+&gt;&gt;&gt; from pprint import pprint
+&gt;&gt;&gt; productionControl = AW_Department(&#x27;Production Control&#x27;)
+&gt;&gt;&gt; print &quot;The &#x27;%s&#x27; department has %d employees&quot; % ( productionControl.name, productionControl.employee_count() )
+The &#x27;Production Control&#x27; department has 6 employees
+&gt;&gt;&gt; pprint( productionControl.employee_list() )
+[{u'BusinessEntityID': 26},
+ {u'BusinessEntityID': 222},
+ {u'BusinessEntityID': 223},
+ {u'BusinessEntityID': 224},
+ {u'BusinessEntityID': 225},
+ {u'BusinessEntityID': 226}]
+&gt;&gt;&gt; pprint( productionControl.shift_coverage() )
+[{u'Employees': 4, u'Shift': u'Day'},
+ {u'Employees': 1, u'Shift': u'Evening'},
+ {u'Employees': 1, u'Shift': u'Night'}]</pre>
+    <p>The <code>dbrelay.py</code> module is available from the <a href="http://github.com/dbrelay/examples/blob/master/python/dbrelay.py" target="_blank">dbrelay/examples repository</a>. Its only dependency is a JSON module. This example <code>full.py</code> module <a href="http://github.com/dbrelay/examples/blob/master/python/full.py" target="_blank">is available there as well</a>.</p>
+</body>
+</html>
