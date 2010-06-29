@@ -45,18 +45,33 @@
                 '"></table>'
             );
             var html_rows = '';
-            jQuery.each( response.data[0].rows, function(idx, row){
-                var html_row = '';
-                for ( cell in row ) { html_row += '<td>' + ( row[cell] ? row[cell] : '&nbsp;' ) + '</td>';};
-                html_rows += '<tr>' + html_row + '</tr>'
-            });
+            jQuery.each(
+                response.data[0].rows,
+                function(idx, row){
+                    var html_row = '';
+                    for ( cell in row ) {
+                        html_row += '<td>' + ( row[cell] ? row[cell] : '&nbsp;' ) + '</td>';
+                    };
+                    html_rows += '<tr>' + html_row + '</tr>'
+                }
+            );
             jQuery( '#' + response.request.query_tag ).append( html_rows );
         };
 
         //example calls:
-        dbrelayQuery(connection, "select @@version as ver", renderResponse, "VERSION");
-        dbrelayQuery(connection, "select Title, FirstName, MiddleName, LastName from HumanResources.vEmployee", renderResponse, "EMPLOYEES");
+        dbrelayQuery(
+            connection,
+            "select @@version as ver",
+            renderResponse,
+            "VERSION"
+        );
 
+        dbrelayQuery(
+            connection,
+            "select Title, FirstName, MiddleName, LastName, Suffix from HumanResources.vEmployee",
+            renderResponse,
+            "EMPLOYEES"
+        );
     </script>
 </head>
 <body></body>
